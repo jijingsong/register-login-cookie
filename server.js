@@ -16,7 +16,7 @@ var server = http.createServer(function (request, response) {
   var queryObject = parsedUrl.query
   var method = request.method
 
-  console.log('方方说：不含查询字符串的路径为\n' + pathNoQuery)
+  console.log('不含查询字符串的路径为\n' + pathNoQuery)
 
   if (pathNoQuery === '/') {
     var str = fs.readFileSync('./index.html', 'utf8')
