@@ -9,6 +9,8 @@ if (!port) {
   process.exit(1)
 }
 
+let sessions = {}
+
 var server = http.createServer(function (request, response) {
   var parsedUrl = url.parse(request.url, true)
   var path = request.url
@@ -16,7 +18,7 @@ var server = http.createServer(function (request, response) {
   var queryObject = parsedUrl.query
   var method = request.method
 
-  console.log('方方说：不含查询字符串的路径为\n' + pathNoQuery)
+  console.log('不含查询字符串的路径为\n' + pathNoQuery)
 
   if (pathNoQuery === '/') {
     var str = fs.readFileSync('./index.html', 'utf8')
@@ -31,19 +33,23 @@ var server = http.createServer(function (request, response) {
       let value = parts[1]
       hash[key] = value
     })
-    console.log(hash.sign_in_email)
 
-    let users = fs.readFileSync('./db/users', 'utf8')    
+    let mySession = sessions[hash.sessionId]
+    let email
+    if(mySession) {
+      email = mySession.sign_in_email
+    }
+
+    let users = fs.readFileSync('./db/users', 'utf8')
     users = JSON.parse(users)
-    let foundUser = false
+    let foundUser
     users.forEach((items) => {
-      if (items.email === hash.sign_in_email) {
-        foundUser = true
+      if (items.email === email) {
+        foundUser = items
       }
     })
-    if(foundUser) {
-      str = str.replace('__user__', hash.sign_in_email)
-      console.log(str)
+    if (foundUser) {
+      str = str.replace('__user__', foundUser.email)
     }
 
     response.statusCode = 200
@@ -106,7 +112,7 @@ var server = http.createServer(function (request, response) {
     var str = fs.readFileSync('./sign_in.html', 'utf8')
     response.setHeader('Content-Type', 'text/html; charset = utf-8')
     response.end(str)
-  } else if (pathNoQuery === '/sign_in' && method === 'POST') {
+  } else if (pathNoQuery === '/sign_in' && method === 'POST') {  //登录
     readBody(request).then((body) => {
       body = body.split('&')
       let hash = {}
@@ -128,7 +134,9 @@ var server = http.createServer(function (request, response) {
         }
       })
       if (found) {
-        response.setHeader('Set-Cookie', `sign_in_email = ${email}`)
+        let sessionId = Math.random() * 100000
+        sessions[sessionId] = {sign_in_email: email}
+        response.setHeader('Set-Cookie', `sessionId = ${sessionId}`)
         response.statusCode = 200
       } else {
         response.statusCode = 401
